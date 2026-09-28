@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Faster `OutcomeSpecificSimulation::measure` in pauliverse when the outcome is random, and faster `support()` in binar for bit vectors and unsigned integers.
+
 ## binar [0.1.5], paulimer [0.2.5], pauliverse [0.1.3] - 2026-09-24
 
 ### Added
