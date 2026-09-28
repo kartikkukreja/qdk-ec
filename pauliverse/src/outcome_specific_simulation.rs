@@ -1,9 +1,9 @@
-use crate::outcome_free_simulation::{max_pair_support, max_support};
+use crate::outcome_free_simulation::{max_pair_support, max_support, update_encoder_for_random_outcome};
 use crate::{OutcomeId, Simulation};
 use binar::Bitwise;
 use paulimer::UnitaryOp;
-use paulimer::clifford::{Clifford, CliffordMutable, CliffordUnitary, MutablePreImages};
-use paulimer::pauli::{DensePauli, Pauli, PauliBits, PauliUnitary, anti_commutes_with, generic::PhaseExponent};
+use paulimer::clifford::{Clifford, CliffordMutable, CliffordUnitary};
+use paulimer::pauli::{Pauli, PauliBits, PauliUnitary, anti_commutes_with, generic::PhaseExponent};
 use paulimer::pauli::{PauliBinaryOps, PauliMutable};
 use rand::{RngExt, SeedableRng, rngs::StdRng};
 
@@ -221,27 +221,6 @@ impl OutcomeSpecificSimulation {
         self.random_outcome_indicator.push(false);
     }
 
-    /// Measures `observable` with a random outcome, given its `preimage` under the state encoder and a qubit `pivot`
-    /// on which `preimage` has an X or Y component.
-    ///
-    /// The stabilizer `image_z(pivot)` serves as the hint. The preimage of each generator that anticommutes with the
-    /// product of `observable` and the hint is multiplied on the right by `preimage · Z_pivot`. When the outcome is
-    /// one, the preimage of each generator that anticommutes with the hint is negated. A generator anticommutes with
-    /// the hint exactly when its preimage has an X or Y component on `pivot`.
-    fn measure_random(&mut self, observable: &SparsePauli, preimage: DensePauli, pivot: usize) {
-        let mut factor = preimage;
-        factor.mul_assign_right_z(pivot);
-        self.allocate_random_bit();
-        let outcome = self.outcome_vector[self.outcome_count() - 1];
-        for qubit in self.clifford.qubits() {
-            let x_anticommutes_with_observable = observable.z_bits().index(qubit);
-            let z_anticommutes_with_observable = observable.x_bits().index(qubit);
-            let (mut x_preimage, mut z_preimage) = self.clifford.preimage_xz_views_mut(qubit);
-            update_generator_preimage(&mut x_preimage, &factor, pivot, x_anticommutes_with_observable, outcome);
-            update_generator_preimage(&mut z_preimage, &factor, pivot, z_anticommutes_with_observable, outcome);
-        }
-    }
-
     fn apply_conditional_pauli_generic<Bits: PauliBits, Phase: PhaseExponent>(
         &mut self,
         pauli: &PauliUnitary<Bits, Phase>,
@@ -301,7 +280,9 @@ impl Simulation for OutcomeSpecificSimulation {
         let non_zero_pos = preimage.x_bits().support().next();
         match non_zero_pos {
             Some(pos) => {
-                self.measure_random(observable, preimage, pos);
+                self.allocate_random_bit();
+                let outcome = self.outcome_vector[self.outcome_count() - 1];
+                update_encoder_for_random_outcome(&mut self.clifford, observable, preimage, pos, outcome);
             }
             None => {
                 self.measure_deterministic(&preimage);
@@ -362,22 +343,6 @@ fn total_parity(outcome_vector: &[bool], outcomes_indicator: &[usize]) -> bool {
         res ^= outcome_vector[*j];
     }
     res
-}
-
-fn update_generator_preimage(
-    generator_preimage: &mut impl PauliBinaryOps<DensePauli>,
-    factor: &DensePauli,
-    pivot: usize,
-    anticommutes_with_observable: bool,
-    outcome: bool,
-) {
-    let anticommutes_with_hint = generator_preimage.x_bits().index(pivot);
-    if anticommutes_with_hint != anticommutes_with_observable {
-        generator_preimage.mul_assign_right(factor);
-    }
-    if anticommutes_with_hint && outcome {
-        generator_preimage.negate();
-    }
 }
 
 //TODO: move to tests module
