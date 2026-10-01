@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `Bitwise::aligned_words` and `BitwiseMut::aligned_words_mut` in binar, which return the words of bit vectors and views stored in aligned blocks.
+
+### Changed
+- Faster `measure` in pauliverse simulators when the outcome is random, faster `support()` for matrix columns and `dot()` for bit vectors in binar, and faster multiplication of Paulis stored in aligned bit vectors in paulimer.
+
 ## binar [0.1.6], paulimer [0.2.6], pauliverse [0.1.4] - 2026-09-29
 
 ### Changed
