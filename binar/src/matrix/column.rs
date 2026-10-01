@@ -111,6 +111,10 @@ impl Column<'_> {
 }
 
 impl Bitwise for Column<'_> {
+    // Each row keeps its bit of this column in a different block, so the bits are read one row at a time. Branching on
+    // each bit is slow when ones and zeros are mixed, because the branch is then often mispredicted. Instead, the bits
+    // of up to 64 rows are packed into a `u64` without branching, with row `i` of the chunk in bit `i`. The set bits
+    // are then found with `min_support()` and cleared one at a time, so that loop runs once per set bit, not per row.
     fn support(&self) -> impl SortedIterator<Item = usize> {
         self.rows
             .chunks(u64::BLOCK_BIT_LEN)

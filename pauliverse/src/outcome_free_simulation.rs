@@ -278,11 +278,11 @@ pub(crate) fn max_pair_support<PauliLike1: Pauli, PauliLike2: Pauli>(a: &PauliLi
 /// Updates `encoder` for a measurement of `observable` with random outcome `outcome`, given the `preimage` of
 /// `observable` under `encoder` and a qubit `pivot` on which `preimage` has an X or Y component.
 ///
-/// The stabilizer `image_z(pivot)` serves as the hint. The preimage of each generator that anticommutes with the
-/// product of `observable` and the hint is multiplied on the right by `preimage · Z_pivot`. When `outcome` is true,
-/// the preimage of each generator that anticommutes with the hint is negated. A generator anticommutes with the hint
-/// exactly when its preimage has an X or Y component on `pivot`. Only generators that anticommute with the hint or with
-/// `observable` are visited.
+/// The stabilizer `image_z(pivot)` anticommutes with `observable`. The preimage of each generator that anticommutes
+/// with the product of `observable` and `image_z(pivot)` is multiplied on the right by `preimage · Z_pivot`. When
+/// `outcome` is true, the preimage of each generator that anticommutes with `image_z(pivot)` is negated. A generator
+/// anticommutes with `image_z(pivot)` exactly when its preimage has an X or Y component on `pivot`. Only generators
+/// that anticommute with `image_z(pivot)` or with `observable` are visited, because the others are unchanged.
 pub(crate) fn update_encoder_for_random_outcome<Encoder>(
     encoder: &mut Encoder,
     observable: &impl Pauli,
@@ -296,10 +296,10 @@ pub(crate) fn update_encoder_for_random_outcome<Encoder>(
     let mut factor = preimage;
     factor.mul_assign_right_z(pivot);
     let (x_generators, z_generators) = {
-        let hint = encoder.z_image_view_up_to_phase(pivot);
+        let z_image_support = encoder.z_image_view_up_to_phase(pivot);
         (
-            support_union(hint.z_bits(), observable.z_bits(), encoder.num_qubits()),
-            support_union(hint.x_bits(), observable.x_bits(), encoder.num_qubits()),
+            support_union(z_image_support.z_bits(), observable.z_bits(), encoder.num_qubits()),
+            support_union(z_image_support.x_bits(), observable.x_bits(), encoder.num_qubits()),
         )
     };
     for qubit in x_generators {
@@ -328,11 +328,11 @@ fn update_generator_preimage<Factor: Pauli>(
     anticommutes_with_observable: bool,
     outcome: bool,
 ) {
-    let anticommutes_with_hint = generator_preimage.x_bits().index(pivot);
-    if anticommutes_with_hint != anticommutes_with_observable {
+    let anticommutes_with_z_image = generator_preimage.x_bits().index(pivot);
+    if anticommutes_with_z_image != anticommutes_with_observable {
         generator_preimage.mul_assign_right(factor);
     }
-    if anticommutes_with_hint && outcome {
+    if anticommutes_with_z_image && outcome {
         generator_preimage.negate();
     }
 }
