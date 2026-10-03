@@ -602,16 +602,19 @@ where
     type PhaseExponentValue = ();
     type PreImageViewMut<'life> = PauliUnitaryProjective<AlignedBitViewMut<'life>>;
 
+    #[inline]
     fn preimage_x_view_mut(&mut self, index: usize) -> Self::PreImageViewMut<'_> {
         let xz_bits = self.bits.rows2_mut(x_preimage_rows_ids(self.num_qubits(), index));
         Self::PreImageViewMut::from_bits_tuple(xz_bits)
     }
 
+    #[inline]
     fn preimage_z_view_mut(&mut self, index: usize) -> Self::PreImageViewMut<'_> {
         let xz_bits = self.bits.rows2_mut(z_preimage_rows_ids(self.num_qubits(), index));
         Self::PreImageViewMut::from_bits_tuple(xz_bits)
     }
 
+    #[inline]
     fn preimage_xz_views_mut(&mut self, index: usize) -> (Self::PreImageViewMut<'_>, Self::PreImageViewMut<'_>) {
         unsafe {
             let xz_ids = xz_preimage_rows_ids(self.num_qubits(), index);
@@ -623,6 +626,7 @@ where
         }
     }
 
+    #[inline]
     #[allow(clippy::similar_names)]
     fn preimage_xz_views_mut_distinct(
         &mut self,

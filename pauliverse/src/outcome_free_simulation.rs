@@ -176,6 +176,8 @@ impl Simulation for OutcomeFreeSimulation {
         self.random_bit_count - 1
     }
 
+    // Growth is rare. Keeping it out of line lets the capacity check inline into every gate and measurement.
+    #[inline(never)]
     fn reserve_qubits(&mut self, new_capacity: usize) {
         if new_capacity > self.qubit_capacity() {
             self.clifford.resize(new_capacity);

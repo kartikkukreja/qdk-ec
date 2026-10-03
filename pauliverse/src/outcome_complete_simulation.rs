@@ -498,6 +498,8 @@ impl Simulation for OutcomeCompleteSimulation {
         self.outcome_matrix.column_count()
     }
 
+    // Growth is rare. Keeping it out of line lets the capacity check inline into every gate and measurement.
+    #[inline(never)]
     fn reserve_qubits(&mut self, new_capacity: usize) {
         if new_capacity > self.qubit_capacity() {
             self.sign_matrix.resize(new_capacity, self.sign_matrix.column_count());
