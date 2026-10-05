@@ -1,9 +1,6 @@
 use binar::Bitwise;
 use paulimer::{
-    clifford::{
-        Clifford, CliffordMutable, CliffordUnitaryModPauli, MutablePreImages, PreimageViews,
-        generic_algos::mul_assign_right_clifford_preimage,
-    },
+    clifford::{Clifford, CliffordMutable, CliffordUnitaryModPauli, MutablePreImages, PreimageViews},
     pauli::{
         DensePauliProjective, Pauli, PauliBinaryOps, PauliBits, PauliMutable, PauliUnitaryProjective,
         SparsePauliProjective, anti_commutes_with,
@@ -113,8 +110,7 @@ impl OutcomeFreeSimulation {
     /// Updates the stabilizer state but doesn't record the specific outcome.
     /// Returns the outcome ID (which indicates a measurement occurred).
     pub fn measure_projective(&mut self, observable: &SparsePauliProjective) -> OutcomeId {
-        self.preimage.set_identity();
-        mul_assign_right_clifford_preimage(&mut self.preimage, &self.clifford, observable);
+        assign_clifford_preimage(&mut self.preimage, &self.clifford, observable);
         let non_zero_pos = self.preimage.x_bits().support().next();
         match non_zero_pos {
             Some(pos) => {
@@ -293,6 +289,28 @@ pub(crate) fn max_pair_support<PauliLike1: Pauli, PauliLike2: Pauli>(a: &PauliLi
         (Some(id), None) | (None, Some(id)) => Some(id),
         (Some(id1), Some(id2)) => Some(std::cmp::max(id1, id2)),
     }
+}
+
+/// Sets `target` to the preimage of `observable` under `clifford` without allocating. The first factor is assigned
+/// rather than multiplied into the identity.
+pub(crate) fn assign_clifford_preimage<'life, Target, Encoder: PreimageViews, Observable: Pauli>(
+    target: &mut Target,
+    clifford: &'life Encoder,
+    observable: &Observable,
+) where
+    Target: PauliBinaryOps<Encoder::PreImageView<'life>> + Pauli<PhaseExponentValue = Observable::PhaseExponentValue>,
+{
+    let x_factors = observable.x_bits().support().map(|id| clifford.preimage_x_view(id));
+    let z_factors = observable.z_bits().support().map(|id| clifford.preimage_z_view(id));
+    let mut factors = x_factors.chain(z_factors);
+    match factors.next() {
+        Some(first) => target.assign(&first),
+        None => target.set_identity(),
+    }
+    for factor in factors {
+        target.mul_assign_right(&factor);
+    }
+    target.mul_assign_phase_from(observable);
 }
 
 /// Buffers used by [`update_encoder_for_random_outcome`]. Each simulation keeps one and reuses it across

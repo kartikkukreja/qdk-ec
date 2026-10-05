@@ -1,10 +1,9 @@
 use crate::outcome_free_simulation::{
-    RandomOutcomeBuffers, max_pair_support, max_support, update_encoder_for_random_outcome,
+    RandomOutcomeBuffers, assign_clifford_preimage, max_pair_support, max_support, update_encoder_for_random_outcome,
 };
 use crate::{OutcomeId, Simulation};
 use binar::Bitwise;
 use paulimer::UnitaryOp;
-use paulimer::clifford::generic_algos::mul_assign_right_clifford_preimage;
 use paulimer::clifford::{Clifford, CliffordMutable, CliffordUnitary};
 use paulimer::pauli::{DensePauli, Pauli, PauliBits, PauliUnitary, anti_commutes_with, generic::PhaseExponent};
 use paulimer::pauli::{PauliBinaryOps, PauliMutable};
@@ -289,8 +288,7 @@ impl Simulation for OutcomeSpecificSimulation {
 
     fn measure(&mut self, observable: &crate::Pauli) -> OutcomeId {
         self.ensure_qubit_capacity(observable.max_support());
-        self.preimage.set_identity();
-        mul_assign_right_clifford_preimage(&mut self.preimage, &self.clifford, observable);
+        assign_clifford_preimage(&mut self.preimage, &self.clifford, observable);
         let non_zero_pos = self.preimage.x_bits().support().next();
         match non_zero_pos {
             Some(pos) => {
